@@ -86,11 +86,7 @@ for key in managers:
 weeks = 13
 entities = list(managers.values())
 weeksBetweenMatchups = 2
-numSchedulesToGenerate = 1
+numSchedulesToGenerate = 10
 
 scheduler = Scheduler(weeks, entities, constraints, weeksBetweenMatchups)
-scheduler.createSchedules(numSchedulesToGenerate)
-if scheduler.validateSchedule():
-    scheduler.generateOutput(LOGO_PATH, TITLE, OUTPUT_PATH)
-else:
-    print('Not a valid schedule.')
+scheduler.createSchedules(numSchedulesToGenerate, LOGO_PATH, TITLE, OUTPUT_PATH)

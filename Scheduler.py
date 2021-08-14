@@ -5,7 +5,7 @@ from pathlib import Path
 from weasyprint import HTML
 
 import sys
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(20000)
 
 class Scheduler:
 
@@ -22,9 +22,15 @@ class Scheduler:
         
         self.schedule = dict([(week + 1, dict([(entity, '') for entity in entities])) for week in range(weeks)])
 
-    def createSchedules(self, numSchedules):
-        for _ in range(numSchedules):
+    def createSchedules(self, numSchedules, logo, title, filePath):
+        for index in range(numSchedules):
             self.scheduleWeek(1)
+            self.fileName = f'schedule-{index + 1}'
+
+            if self.validateSchedule():
+                self.generateOutput(logo, title, filePath)
+            else:
+                print('Not a valid schedule.')
 
     # This function schedules a matchup for all entities
     # for the given week. 
@@ -171,7 +177,7 @@ class Scheduler:
         self.generatePdf(logo, title, filePath)
 
     def generateCsv(self, filePath):
-        with open(f'{filePath}.csv', 'w') as f:
+        with open(f'{filePath}{self.fileName}.csv', 'w') as f:
             fields = ['Week']
             fields += list(self.schedule[1].keys())
             writer = csv.DictWriter(f, fieldnames=fields)
@@ -253,7 +259,7 @@ class Scheduler:
 
         htmldoc = HTML(string=html, base_url="")
         pdf = htmldoc.write_pdf()
-        Path(f'{filePath}.pdf').write_bytes(pdf)
+        Path(f'{filePath}{self.fileName}.pdf').write_bytes(pdf)
 
     def printSchedule(self):
         for week in self.schedule:
