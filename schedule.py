@@ -86,7 +86,17 @@ for key in managers:
 weeks = 13
 entities = list(managers.values())
 weeksBetweenMatchups = 2
-numSchedulesToGenerate = 10
+numSchedulesToGenerate = 1
 
-scheduler = Scheduler(weeks, entities, constraints, weeksBetweenMatchups)
-scheduler.createSchedules(numSchedulesToGenerate, LOGO_PATH, TITLE, OUTPUT_PATH)
+with open("data/entities.txt", "wt") as f:
+    f.writelines("\n".join(entities))
+
+with open("data/constraints.txt", "wt") as f:
+    for entity in constraints:
+        f.write(f"{entity}\n")
+        
+        for opponent in constraints[entity]:
+            f.write(f"{opponent}|{constraints[entity][opponent]}\n")
+
+#scheduler = Scheduler(weeks, entities, constraints, weeksBetweenMatchups)
+#scheduler.createSchedules(numSchedulesToGenerate, LOGO_PATH, TITLE, OUTPUT_PATH)

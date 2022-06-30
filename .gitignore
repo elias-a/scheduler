@@ -6,3 +6,5 @@ data
 output
 assets
 config.py
+
+*.o
