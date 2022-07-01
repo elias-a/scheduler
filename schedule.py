@@ -98,5 +98,5 @@ with open("data/constraints.txt", "wt") as f:
         for opponent in constraints[entity]:
             f.write(f"{opponent}|{constraints[entity][opponent]}\n")
 
-#scheduler = Scheduler(weeks, entities, constraints, weeksBetweenMatchups)
-#scheduler.createSchedules(numSchedulesToGenerate, LOGO_PATH, TITLE, OUTPUT_PATH)
+scheduler = Scheduler(entities, weeks, LOGO_PATH, TITLE, OUTPUT_PATH)
+scheduler.generateOutput()
