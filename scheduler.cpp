@@ -35,7 +35,7 @@ void Scheduler::printSchedule() {
 }
 
 void Scheduler::createSchedules(int n) {
-    for (int index = 0; index < n; index++) {
+    for (int index = 1; index <= n; index++) {
         srand(time(0));
         initializeSchedule();
         insertScheduleConstraints();
@@ -43,6 +43,9 @@ void Scheduler::createSchedules(int n) {
 
         if (validateSchedule()) {
             printSchedule();
+
+            std::string filePath = "output/schedule" + std::to_string(index);
+            generateOutput(filePath);
         } else {
             std::cout << "Not a valid schedule" << std::endl;
         }
@@ -266,4 +269,28 @@ bool Scheduler::validateSchedule() {
     }
 
     return true;
+}
+
+void Scheduler::generateOutput(std::string filePath) {
+    generateCsv(filePath);
+}
+
+void Scheduler::generateCsv(std::string filePath) {
+    std::ofstream file(filePath + ".csv");
+
+    file << "Week";
+    for (const auto &entity : entities) {
+        file << "," + entity;
+    }
+    file << "\n";
+
+    for (int week = 1; week <= weeks; week++) {
+        file << week;
+        for (const auto &entity : entities) {
+            file << "," << schedule[week - 1][entity];
+        }
+        file << "\n";
+    }
+
+    file.close();
 }

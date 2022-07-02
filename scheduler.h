@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <fstream>
 
 typedef std::unordered_map<std::string, std::unordered_map<std::string, int>> Constraints;
 typedef std::unordered_map<std::string, std::string> Matchups;
@@ -12,6 +13,8 @@ class Scheduler {
         Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm);
         void createSchedules(int n);
         void printSchedule();
+        void generateOutput(std::string fp);
+        void generateCsv(std::string fp);
     private:
         int weeks;
         std::vector<std::string> entities;
