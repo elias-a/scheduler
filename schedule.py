@@ -2,7 +2,6 @@ import os
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
-from Scheduler import Scheduler
 from config import DRIVER_PATH, UPDATE, LEAGUE_ID, LOGO_PATH, TITLE, OUTPUT_PATH
 
 def scrape(url, filename):
@@ -97,6 +96,3 @@ with open("data/constraints.txt", "wt") as f:
         
         for opponent in constraints[entity]:
             f.write(f"{opponent}|{constraints[entity][opponent]}\n")
-
-scheduler = Scheduler(entities, weeks, LOGO_PATH, TITLE, OUTPUT_PATH)
-scheduler.generateOutput()

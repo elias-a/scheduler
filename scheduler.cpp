@@ -1,13 +1,14 @@
-#include <iostream>
 #include "scheduler.h"
 
-Scheduler::Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm) {    
+Scheduler::Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm, std::string lp, std::string t) {    
     weeks = w;
     entities = e;
     constraints = c;
     constraintsCheck = c;
     scheduleConstraints = sc;
     weeksBetweenMatchups = wbm;
+    logoPath = lp;
+    title = t;
 }
 
 void Scheduler::initializeSchedule() {
@@ -273,6 +274,7 @@ bool Scheduler::validateSchedule() {
 
 void Scheduler::generateOutput(std::string filePath) {
     generateCsv(filePath);
+    generatePdf(filePath);
 }
 
 void Scheduler::generateCsv(std::string filePath) {
@@ -293,4 +295,62 @@ void Scheduler::generateCsv(std::string filePath) {
     }
 
     file.close();
+}
+
+void Scheduler::generatePdf(std::string filePath) {
+    std::string columnWidth = std::to_string(std::floor(100 / (entities.size() + 1)));
+
+    std::string headerHtml = "<th style='width:" + columnWidth + "%;'>Week</th>";
+    for (const auto &entity : entities) {
+        headerHtml += "<th style='width:" + columnWidth + "%;'>" + entity + "</th>";
+    }
+
+    std::string tableHtml = "";
+    for (int week = 1; week <= weeks; week++) {
+        tableHtml += "<tr><td>" + std::to_string(week) + "</td>";
+
+        for (const auto &entity : entities) {
+            tableHtml += "<td>" + schedule[week - 1][entity] + "</td>";
+        }
+
+        tableHtml += "</tr>";
+    }    
+
+    std::unordered_map<std::string, std::string> mapping = {
+        { "%%LOGO_PATH%%", logoPath },
+        { "%%TITLE%%", title },
+        { "%%HEADER%%", headerHtml },
+        { "%%TABLE%%", tableHtml },
+    };
+
+    std::ifstream templateFile("schedule-template.html");
+    std::ofstream htmlFile("schedule.html");
+
+    std::string line;
+    while (std::getline(templateFile, line, '\n')) {
+        for (const auto &pair : mapping) {
+            while (true) {
+                std::string templateTag = pair.first;
+                int index = line.find(templateTag);
+
+                if (index >= 0) {
+                    std::string replacement = pair.second;
+                    line.replace(index, templateTag.length(), replacement);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        htmlFile << line << "\n";
+    }
+
+    templateFile.close();
+    htmlFile.close();
+
+    std::string command = "wkhtmltopdf --enable-local-file-access schedule.html " + filePath + ".pdf";
+    system(command.c_str());
+
+    // Delete the created html file.
+    system("rm schedule.html");
 }

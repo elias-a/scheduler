@@ -72,7 +72,17 @@ int main() {
 
     scheduleFile.close();
 
-    Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups);
+    std::string logoPath;
+    std::string title;
+
+    std::ifstream configFile("config.txt");
+
+    std::getline(configFile, logoPath, '\n');
+    std::getline(configFile, title, '\n');
+
+    configFile.close();
+
+    Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
     scheduler.createSchedules(1);
 
     return 0;

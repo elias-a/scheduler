@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+    <style>
+        #logo {
+            width: 100px;
+            display: inline-block; 
+        }
+
+        #title {
+            font-family: Times New Roman;
+            float: right;
+            display: inline-block;
+            text-align: right;
+            margin-right: 100px;
+        }
+
+        #schedule {
+            font-family: Times New Roman;
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 50px;
+        }
+
+        #schedule td, #schedule th {
+            border: 1px solid #DDD;
+            padding: 8px;
+            text-align: center;
+            height: 30px;
+        }
+
+        #schedule tr:nth-child(even) { background-color: #F2F2F2; }
+
+        #schedule th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            background-color: #0000CD;
+            color: #FFF;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <img id="logo" src="%%LOGO_PATH%%">
+        <h1 id="title">%%TITLE%%</h1>
+    </div>
+    <table id="schedule">
+        <thead>
+            <tr>
+                %%HEADER%%
+            </tr>
+        </thead>
+        <tbody>
+            %%TABLE%%
+        </tbody>
+    </table>
+</body>
+</html>
