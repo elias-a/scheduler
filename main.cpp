@@ -42,7 +42,35 @@ int main() {
 
     constraintsFile.close();
 
-    std::vector<Matchups> scheduleConstraints = {};
+    std::ifstream scheduleFile("data/schedule-constraints.txt");
+
+    std::vector<Matchups> scheduleConstraints;
+    for (int index = 0; index < weeks; index++) {
+        scheduleConstraints.push_back({});
+    }
+
+    std::string scheduleLine;
+    int week = -1;
+    while (std::getline(scheduleFile, scheduleLine, '\n')) {
+        if (scheduleLine.size() > 0) {
+            int delimiterIndex = scheduleLine.find("|");
+
+            if (delimiterIndex < 0) {
+                week = stoi(scheduleLine);
+                scheduleConstraints[week] = {};
+            } else {
+                std::string entity = scheduleLine.substr(0, delimiterIndex);
+                std::string opponent = scheduleLine.substr(delimiterIndex + 1);
+
+                if (week > -1 && scheduleConstraints.size() >= week) {
+                    scheduleConstraints[week - 1][entity] = opponent;
+                    scheduleConstraints[week - 1][opponent] = entity;
+                }
+            }
+        }
+    }
+
+    scheduleFile.close();
 
     Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups);
     scheduler.createSchedules(1);

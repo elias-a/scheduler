@@ -22,6 +22,7 @@ class Scheduler {
         std::vector<Matchups> schedule;
 
         void initializeSchedule();
+        void insertScheduleConstraints();
         void scheduleWeek(int w);
         std::string getOpponent(int w, std::string e);
         void alterSchedule(int w, std::string e, std::string o, std::vector<std::string> &ue);

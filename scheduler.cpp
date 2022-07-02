@@ -38,6 +38,7 @@ void Scheduler::createSchedules(int n) {
     for (int index = 0; index < n; index++) {
         srand(time(0));
         initializeSchedule();
+        insertScheduleConstraints();
         scheduleWeek(1);
 
         if (validateSchedule()) {
@@ -48,12 +49,35 @@ void Scheduler::createSchedules(int n) {
     }
 }
 
-// This function schedules a matchup for all entities
+void Scheduler::insertScheduleConstraints() {
+    for (int index = 0; index < weeks; index++) {
+        if (scheduleConstraints.size() <= index) {
+            break;
+        }
+
+        for (const auto &matchup : scheduleConstraints[index]) {
+            std::string entity = matchup.first;
+            std::string opponent = matchup.second;
+
+            schedule[index][entity] = opponent;
+            constraints[entity][opponent]--;
+        }
+    }
+}
+
+// This method schedules a matchup for all entities
 // for the given week.
 void Scheduler::scheduleWeek(int week) {
     if (week > weeks) {
         return;
-    }
+    } else if (
+        scheduleConstraints.size() > week - 1 &&
+        scheduleConstraints[week - 1].size() > 0
+    ) {
+        // If the week is determined by schedule constraints,
+        // move to the next week.
+        return scheduleWeek(week + 1);
+    } 
 
     // Keep track of which entities have not been
     // scheduled this week.
@@ -129,6 +153,15 @@ void Scheduler::cleanup(int currentWeek, int newWeek) {
     // and the current week, and undo any changes that
     // have been made to instance variables.
     for (int week = newWeek; week <= currentWeek; week++) {
+        if (
+            scheduleConstraints.size() > week - 1 &&
+            scheduleConstraints[week - 1].size() > 0
+        ) {
+            // Do not modify weeks that are determined by
+            // schedule constraints.
+            continue;
+        }
+
         for (const auto &matchup : schedule[week - 1]) {
             std::string entity = matchup.first;
             std::string opponent = matchup.second;
@@ -215,6 +248,18 @@ bool Scheduler::validateSchedule() {
             int numMatchups = c.second;
 
             if (numMatchups != constraintsCheck[entity][opponent]) {
+                return false;
+            }
+        }
+    }
+
+    // Check that any schedule constraints are met.
+    for (int index = 0; index < scheduleConstraints.size(); index++) {
+        for (const auto &matchup : scheduleConstraints[index]) {
+            std::string entity = matchup.first;
+            std::string opponent = matchup.second;
+
+            if (schedule[index][entity].compare(opponent) != 0) {
                 return false;
             }
         }
