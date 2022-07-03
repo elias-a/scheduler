@@ -7,7 +7,7 @@
 #include <fstream>
 #include <cmath>
 
-typedef std::unordered_map<std::string, std::unordered_map<std::string, int>> Constraints;
+typedef std::unordered_map<std::string, std::unordered_map<std::string, int> > Constraints;
 typedef std::unordered_map<std::string, std::string> Matchups;
 
 class Scheduler {
