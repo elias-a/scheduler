@@ -1,7 +1,16 @@
 #include <fstream>
 #include "scheduler.h"
+#include "nfl.h"
 
 int main() {
+    std::ifstream configFile("config.txt");
+
+    std::string leagueId;
+    std::getline(configFile, leagueId, '\n');
+
+    Nfl nfl(leagueId);
+    nfl.getManagers();
+
     int weeks = 13;
     int weeksBetweenMatchups = 2;
     
@@ -74,8 +83,6 @@ int main() {
 
     std::string logoPath;
     std::string title;
-
-    std::ifstream configFile("config.txt");
 
     std::getline(configFile, logoPath, '\n');
     std::getline(configFile, title, '\n');
