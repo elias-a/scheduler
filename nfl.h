@@ -2,7 +2,9 @@
 
 #include <iostream>
 #include <string>
+#include <regex>
 #include <cpr/cpr.h>
+#include "tinyxml2.h"
 
 class Nfl {
     public:
@@ -10,5 +12,5 @@ class Nfl {
         void getManagers();
     private:
         std::string leagueId;
-        void scrape(std::string url);
+        void scrape(std::string url, std::string &text);
 };

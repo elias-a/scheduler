@@ -1,11 +1,9 @@
 .vscode
 .DS_Store
 
-__pycache__
 data
 output
 assets
-config.py
 config.txt
 
 *.o
