@@ -13,4 +13,5 @@ class Nfl {
     private:
         std::string leagueId;
         void scrape(std::string url, std::string &text);
+        void traverseXml(tinyxml2::XMLElement *element);
 };

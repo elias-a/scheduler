@@ -15,6 +15,22 @@ void Nfl::scrape(std::string url, std::string &text) {
     }
 }
 
+void Nfl::traverseXml(tinyxml2::XMLElement *element) {
+    tinyxml2::XMLElement *next;
+
+    next = element->FirstChildElement();
+    if (next) {
+        traverseXml(next);
+    }
+
+    next = element->NextSiblingElement();
+    if (next) {
+        traverseXml(next);
+    }
+
+    return;
+}
+
 void Nfl::getManagers() {
     std::string url = "https://fantasy.nfl.com/league/" + leagueId + "/owners";
     std::string text;
@@ -42,5 +58,6 @@ void Nfl::getManagers() {
     tinyxml2::XMLDocument html;
     html.Parse(text.c_str());
 
-    tinyxml2::XMLElement *rootNode = html.FirstChildElement();
+    tinyxml2::XMLElement *rootElement = html.FirstChildElement();
+    traverseXml(rootElement);
 }
