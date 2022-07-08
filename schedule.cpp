@@ -9,23 +9,11 @@ int main() {
     std::getline(configFile, leagueId, '\n');
 
     Nfl nfl(leagueId);
-    nfl.getManagers();
+    std::vector<std::string> entities = nfl.getManagers();
 
     int weeks = 13;
     int weeksBetweenMatchups = 2;
     
-    std::ifstream entitiesFile("data/entities.txt");
-
-    std::vector<std::string> entities;
-    std::string entitiesLine;
-    while (std::getline(entitiesFile, entitiesLine, '\n')) {
-        if(entitiesLine.size() > 0) {
-            entities.push_back(entitiesLine);
-        }
-    }
-
-    entitiesFile.close();
-
     std::ifstream constraintsFile("data/constraints.txt");
 
     Constraints constraints;
