@@ -1,5 +1,7 @@
 #pragma once
 
+#include <fstream>
+#include <sys/stat.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -15,10 +17,11 @@ struct HtmlElement {
 
 class Nfl {
     public:
-        Nfl(std::string id);
+        Nfl(std::string id, bool u);
         std::vector<std::string> getManagers();
     private:
         std::string leagueId;
+        bool update;
         std::vector<std::string> managers;
         void scrape(std::string url, std::string &text);
         void cleanHtml(std::string &text);
