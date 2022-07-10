@@ -1,4 +1,5 @@
 #include <fstream>
+#include <ctime>
 #include "scheduler.h"
 #include "nfl.h"
 
@@ -12,8 +13,13 @@ int main() {
     std::getline(configFile, configUpdate, '\n');
     bool update = configUpdate.compare("true") == 0;
 
-    Nfl nfl(leagueId, update);
+    std::time_t time = std::time(nullptr);
+    const std::tm *timeInfo = std::localtime(&time);
+    int previousYear = 1900 + timeInfo->tm_year - 1;
+
+    Nfl nfl(leagueId, update, previousYear);
     std::vector<std::string> entities = nfl.getManagers();
+    nfl.getStandings();
 
     // int weeks = 13;
     // int weeksBetweenMatchups = 2;

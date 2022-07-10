@@ -1,8 +1,9 @@
 #include "nfl.h"
 
-Nfl::Nfl(std::string id, bool u) {
+Nfl::Nfl(std::string id, bool u, int y) {
     leagueId = id;
     update = u;
+    year = y;
 }
 
 void Nfl::scrape(std::string url, std::string &text) {
@@ -37,7 +38,7 @@ void Nfl::cleanHtml(std::string &text) {
     text = std::regex_replace(text, htmlTag, "<html>");
 }
 
-void Nfl::traverseXml(tinyxml2::XMLElement *element) {
+void Nfl::traverseXml(tinyxml2::XMLElement *element, void (Nfl::*f)(tinyxml2::XMLElement *)) {
     if (element == NULL) {
         return;
     }
@@ -46,23 +47,15 @@ void Nfl::traverseXml(tinyxml2::XMLElement *element) {
 
     next = element->FirstChildElement();
     if (next) {
-        traverseXml(next);
+        traverseXml(next, f);
     }
 
     next = element->NextSiblingElement();
     if (next) {
-        traverseXml(next);
+        traverseXml(next, f);
     }
 
-    const char *tag = "td";
-    const char *attributeName = "class";
-    const char *attributeValue = "teamOwnerName";
-    HtmlElement data = {
-        tag,
-        attributeName,
-        attributeValue
-    };
-    extractData(element, &data);
+    (this->*f)(element);
 
     return;
 }
@@ -91,6 +84,20 @@ void Nfl::extractData(tinyxml2::XMLElement *element, HtmlElement *data) {
     }
 }
 
+void Nfl::managerSearch(tinyxml2::XMLElement* element) {
+    const char *tag = "td";
+    const char *attributeName = "class";
+    const char *attributeValue = "teamOwnerName";
+    HtmlElement data = {
+        tag,
+        attributeName,
+        attributeValue
+    };
+    extractData(element, &data);
+}
+
+void Nfl::standingsSearch(tinyxml2::XMLElement *element) {}
+
 std::vector<std::string> Nfl::getManagers() {
     std::string filePath = "data/entities.txt";
     struct stat buffer;
@@ -105,7 +112,7 @@ std::vector<std::string> Nfl::getManagers() {
         html.Parse(text.c_str());
 
         tinyxml2::XMLElement *rootElement = html.FirstChildElement();
-        traverseXml(rootElement);
+        traverseXml(rootElement, &Nfl::managerSearch);
 
         std::ofstream file(filePath);
 
@@ -114,7 +121,7 @@ std::vector<std::string> Nfl::getManagers() {
         }
 
         file.close();
-    } else {        
+    } else {
         std::ifstream file(filePath);
 
         std::string line;
@@ -128,4 +135,28 @@ std::vector<std::string> Nfl::getManagers() {
     }
 
     return managers;
+}
+
+void Nfl::getStandings() {
+    std::string filePath = "data/standings.txt";
+    struct stat buffer;
+
+    if (update || stat(filePath.c_str(), &buffer) != 0) {
+        std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
+            "/history/" + std::to_string(year) + 
+            "/standings?historyStandingsType=regular";
+        std::string text;
+        scrape(url, text);
+        cleanHtml(text);
+
+        tinyxml2::XMLDocument html;
+        html.Parse(text.c_str());
+
+        tinyxml2::XMLElement *rootElement = html.FirstChildElement();
+        traverseXml(rootElement, &Nfl::standingsSearch);
+    } else {
+
+    }
+
+    return;
 }
