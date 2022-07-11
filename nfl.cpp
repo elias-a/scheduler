@@ -36,6 +36,26 @@ void Nfl::cleanHtml(std::string &text) {
 
     std::regex htmlTag("<html.*>");
     text = std::regex_replace(text, htmlTag, "<html>");
+
+    // Remove img, link and a tags, for now, in order to
+    // easily modify unquoted attributes in the html.
+    // TODO: Circumvent the need to remove these tags.
+    std::regex imgTag(R"(<img([\s\S]*?)/>)");
+    text = std::regex_replace(text, imgTag, "");
+
+    std::regex linkTag(R"(<link([\s\S]*?)/>)");
+    text = std::regex_replace(text, linkTag, "");
+
+    std::regex aTag(R"(<a ([\s\S]*?)>)");
+    text = std::regex_replace(text, aTag, "<a>");
+
+    // The HTML standard does not require quotes around attribute
+    // values, but the XML parser requires them.
+    // TODO: Speed this up.
+    std::regex unquotedAttribute(R"((<[\s\S]+=(?:(?!["'])))([^\s>]*))");
+    while (std::regex_search(text, unquotedAttribute)) {
+        text = std::regex_replace(text, unquotedAttribute, "$1\"$2\"");
+    }
 }
 
 void Nfl::traverseXml(tinyxml2::XMLElement *element, void (Nfl::*f)(tinyxml2::XMLElement *)) {
