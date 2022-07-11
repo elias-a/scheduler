@@ -19,76 +19,51 @@ int main() {
 
     Nfl nfl(leagueId, update, previousYear);
     std::vector<std::string> entities = nfl.getManagers();
-    nfl.getStandings();
+    Constraints constraints = nfl.getConstraints();
 
-    // int weeks = 13;
-    // int weeksBetweenMatchups = 2;
-    
-    // std::ifstream constraintsFile("data/constraints.txt");
+    int weeks = 13;
+    int weeksBetweenMatchups = 2;
 
-    // Constraints constraints;
-    // std::string constraintsLine;
-    // std::string entity = "";
-    // while (std::getline(constraintsFile, constraintsLine, '\n')) {
-    //     if (constraintsLine.size() > 0) {
-    //         int delimiterIndex = constraintsLine.find("|");
+    std::ifstream scheduleFile("data/schedule-constraints.txt");
 
-    //         if (delimiterIndex < 0) {
-    //             entity = constraintsLine;
-    //             constraints[entity] = {};
-    //         } else {
-    //             std::string opponent = constraintsLine.substr(0, delimiterIndex);
-    //             int numMatchups = stoi(constraintsLine.substr(delimiterIndex + 1));
+    std::vector<Matchups> scheduleConstraints;
+    for (int index = 0; index < weeks; index++) {
+        scheduleConstraints.push_back({});
+    }
 
-    //             if (constraints.find(entity) != constraints.end()) {
-    //                 constraints[entity][opponent] = numMatchups;
-    //             }
-    //         }
-    //     }
-    // }
+    std::string scheduleLine;
+    int week = -1;
+    while (std::getline(scheduleFile, scheduleLine, '\n')) {
+        if (scheduleLine.size() > 0) {
+            int delimiterIndex = scheduleLine.find("|");
 
-    // constraintsFile.close();
+            if (delimiterIndex < 0) {
+                week = stoi(scheduleLine);
+                scheduleConstraints[week] = {};
+            } else {
+                std::string entity = scheduleLine.substr(0, delimiterIndex);
+                std::string opponent = scheduleLine.substr(delimiterIndex + 1);
 
-    // std::ifstream scheduleFile("data/schedule-constraints.txt");
+                if (week > -1 && scheduleConstraints.size() >= week) {
+                    scheduleConstraints[week - 1][entity] = opponent;
+                    scheduleConstraints[week - 1][opponent] = entity;
+                }
+            }
+        }
+    }
 
-    // std::vector<Matchups> scheduleConstraints;
-    // for (int index = 0; index < weeks; index++) {
-    //     scheduleConstraints.push_back({});
-    // }
+    scheduleFile.close();
 
-    // std::string scheduleLine;
-    // int week = -1;
-    // while (std::getline(scheduleFile, scheduleLine, '\n')) {
-    //     if (scheduleLine.size() > 0) {
-    //         int delimiterIndex = scheduleLine.find("|");
+    std::string logoPath;
+    std::string title;
 
-    //         if (delimiterIndex < 0) {
-    //             week = stoi(scheduleLine);
-    //             scheduleConstraints[week] = {};
-    //         } else {
-    //             std::string entity = scheduleLine.substr(0, delimiterIndex);
-    //             std::string opponent = scheduleLine.substr(delimiterIndex + 1);
+    std::getline(configFile, logoPath, '\n');
+    std::getline(configFile, title, '\n');
 
-    //             if (week > -1 && scheduleConstraints.size() >= week) {
-    //                 scheduleConstraints[week - 1][entity] = opponent;
-    //                 scheduleConstraints[week - 1][opponent] = entity;
-    //             }
-    //         }
-    //     }
-    // }
+    configFile.close();
 
-    // scheduleFile.close();
-
-    // std::string logoPath;
-    // std::string title;
-
-    // std::getline(configFile, logoPath, '\n');
-    // std::getline(configFile, title, '\n');
-
-    // configFile.close();
-
-    // Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
-    // scheduler.createSchedules(1);
+    Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
+    scheduler.createSchedules(1);
 
     return 0;
 }

@@ -80,13 +80,23 @@ void Nfl::traverseXml(tinyxml2::XMLElement *element, void (Nfl::*f)(tinyxml2::XM
     return;
 }
 
-void Nfl::extractData(tinyxml2::XMLElement *element, HtmlElement *data) {
-    if (strcmp(element->Name(), data->tag) == 0) {
-        const tinyxml2::XMLAttribute *attribute = element->FindAttribute(data->attributeName);
+void Nfl::managerSearch(tinyxml2::XMLElement* element) {
+    const char *tag = "tr";
+    const char *attributeName = "class";
+    const char *attributeValue = "team-";
+    HtmlElement data = {
+        tag,
+        attributeName,
+        attributeValue
+    };
+
+    if (strcmp(element->Name(), data.tag) == 0) {
+        const tinyxml2::XMLAttribute *attribute = element->FindAttribute(data.attributeName);
         if (attribute) {
-            if (strstr(attribute->Value(), data->attributeValue)) {
+            if (strstr(attribute->Value(), data.attributeValue)) {
+                tinyxml2::XMLElement *e = element->FirstChildElement()->NextSiblingElement();
                 // The text is inside the element 3 nodes down the tree.
-                tinyxml2::XMLElement *managerElement = element;
+                tinyxml2::XMLElement *managerElement = e;
                 for (int i = 0; i < 3; i++) {
                     managerElement = managerElement->FirstChildElement();
                     if (managerElement == NULL) {
@@ -95,30 +105,43 @@ void Nfl::extractData(tinyxml2::XMLElement *element, HtmlElement *data) {
                     }
                 }
 
-                std::string manager = managerElement->GetText();
-                if (std::find(managers.begin(), managers.end(), manager) == managers.end()) {
-                    managers.push_back(manager);
+                // Extract the manager's name and ID.
+                std::string classes = attribute->Value();
+                std::string id = classes.substr(classes.find("-") + 1, 1);
+                std::string name = managerElement->GetText();
+                managers[id] = name;
+            }
+        }
+    }
+}
+
+void Nfl::standingsSearch(tinyxml2::XMLElement *element) {
+    const char *tag = "span";
+    const char *attributeName = "class";
+    const char *attributeValue = "teamRank ";
+    HtmlElement data = {
+        tag,
+        attributeName,
+        attributeValue
+    };
+
+    if (strcmp(element->Name(), data.tag) == 0) {
+        const tinyxml2::XMLAttribute *attribute = element->FindAttribute(data.attributeName);
+        if (attribute) {
+            if (strstr(attribute->Value(), data.attributeValue)) {
+                std::string rank = element->GetText();
+                if (!strstr(rank.c_str(), "(")) {
+                    std::string classes = attribute->Value();
+                    std::string id(1, classes.back());
+                    standings[id] = atoi(rank.c_str());
                 }
             }
         }
     }
 }
 
-void Nfl::managerSearch(tinyxml2::XMLElement* element) {
-    const char *tag = "td";
-    const char *attributeName = "class";
-    const char *attributeValue = "teamOwnerName";
-    HtmlElement data = {
-        tag,
-        attributeName,
-        attributeValue
-    };
-    extractData(element, &data);
-}
-
-void Nfl::standingsSearch(tinyxml2::XMLElement *element) {}
-
 std::vector<std::string> Nfl::getManagers() {
+    std::vector<std::string> managerNames;
     std::string filePath = "data/entities.txt";
     struct stat buffer;
 
@@ -137,7 +160,9 @@ std::vector<std::string> Nfl::getManagers() {
         std::ofstream file(filePath);
 
         for (const auto &manager : managers) {
-            file << manager << "\n";
+            std::string name = manager.second;
+            managerNames.push_back(name);
+            file << name << "\n";
         }
 
         file.close();
@@ -147,36 +172,93 @@ std::vector<std::string> Nfl::getManagers() {
         std::string line;
         while (std::getline(file, line, '\n')) {
             if (line.compare("") != 0) {
-                managers.push_back(line);
+                managerNames.push_back(line);
             }
         }
 
         file.close();
     }
 
-    return managers;
+    return managerNames;
 }
 
 void Nfl::getStandings() {
-    std::string filePath = "data/standings.txt";
+    std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
+        "/history/" + std::to_string(year) + 
+        "/standings?historyStandingsType=regular";
+    std::string text;
+    scrape(url, text);
+    cleanHtml(text);
+
+    tinyxml2::XMLDocument html;
+    html.Parse(text.c_str());
+
+    tinyxml2::XMLElement *rootElement = html.FirstChildElement();
+    traverseXml(rootElement, &Nfl::standingsSearch);
+}
+
+Constraints Nfl::getConstraints() {
+    Constraints constraints;
+    std::string filePath = "data/constraints.txt";
     struct stat buffer;
 
     if (update || stat(filePath.c_str(), &buffer) != 0) {
-        std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
-            "/history/" + std::to_string(year) + 
-            "/standings?historyStandingsType=regular";
-        std::string text;
-        scrape(url, text);
-        cleanHtml(text);
+        getStandings();
 
-        tinyxml2::XMLDocument html;
-        html.Parse(text.c_str());
+        for (const auto &manager : managers) {
+            std::string id = manager.first;
+            std::string name = manager.second;
 
-        tinyxml2::XMLElement *rootElement = html.FirstChildElement();
-        traverseXml(rootElement, &Nfl::standingsSearch);
+            for (const auto &opponent : managers) {
+                std::string opponentId = opponent.first;
+                std::string opponentName = opponent.second;
+
+                if (id.compare(opponentId) != 0) {
+                    if (standings[id] == standings[opponentId]) {
+                        constraints[name][opponentName] = 1;
+                    } else {
+                        constraints[name][opponentName] = 2;
+                    }
+                }
+            }
+        }
+
+        std::ofstream file(filePath);
+
+        for (const auto &c : constraints) {
+            file << c.first << "\n";
+
+            for (const auto &m : c.second) {
+                file << m.first << "|" << m.second << "\n";
+            }
+        }
+
+        file.close();
     } else {
+        std::ifstream file(filePath);
 
+        std::string constraintsLine;
+        std::string entity = "";
+        while (std::getline(file, constraintsLine, '\n')) {
+            if (constraintsLine.size() > 0) {
+                int delimiterIndex = constraintsLine.find("|");
+
+                if (delimiterIndex < 0) {
+                    entity = constraintsLine;
+                    constraints[entity] = {};
+                } else {
+                    std::string opponent = constraintsLine.substr(0, delimiterIndex);
+                    int numMatchups = stoi(constraintsLine.substr(delimiterIndex + 1));
+
+                    if (constraints.find(entity) != constraints.end()) {
+                        constraints[entity][opponent] = numMatchups;
+                    }
+                }
+            }
+        }
+
+        file.close();
     }
 
-    return;
+    return constraints;
 }
