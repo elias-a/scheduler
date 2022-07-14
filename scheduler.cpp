@@ -12,6 +12,9 @@ Scheduler::Scheduler(int w, std::vector<std::string> e, Constraints c, std::vect
 }
 
 void Scheduler::initializeSchedule() {
+    schedule.clear();
+    constraints = constraintsCheck;
+
     for (int week = 1; week <= weeks; week++) {
         Matchups matchups;
 
