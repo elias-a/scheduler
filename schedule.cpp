@@ -19,40 +19,20 @@ int main() {
 
     Nfl nfl(leagueId, update, previousYear);
     std::vector<std::string> entities = nfl.getManagers();
-    Constraints constraints = nfl.getConstraints();
+    Constraints matchupConstraints = nfl.getMatchupConstraints();
 
-    int weeks = 13;
-    int weeksBetweenMatchups = 2;
+    std::string configWeeks;
+    std::string configWeeksBetweenMatchups;
+    std::getline(configFile, configWeeks, '\n');
+    std::getline(configFile, configWeeksBetweenMatchups, '\n');
+    int weeks = stoi(configWeeks);
+    int weeksBetweenMatchups = stoi(configWeeksBetweenMatchups);
 
-    std::ifstream scheduleFile("data/schedule-constraints.txt");
+    std::vector<Matchups> scheduleConstraints = nfl.getScheduleConstraints(weeks);
 
-    std::vector<Matchups> scheduleConstraints;
-    for (int index = 0; index < weeks; index++) {
-        scheduleConstraints.push_back({});
-    }
-
-    std::string scheduleLine;
-    int week = -1;
-    while (std::getline(scheduleFile, scheduleLine, '\n')) {
-        if (scheduleLine.size() > 0) {
-            int delimiterIndex = scheduleLine.find("|");
-
-            if (delimiterIndex < 0) {
-                week = stoi(scheduleLine);
-                scheduleConstraints[week] = {};
-            } else {
-                std::string entity = scheduleLine.substr(0, delimiterIndex);
-                std::string opponent = scheduleLine.substr(delimiterIndex + 1);
-
-                if (week > -1 && scheduleConstraints.size() >= week) {
-                    scheduleConstraints[week - 1][entity] = opponent;
-                    scheduleConstraints[week - 1][opponent] = entity;
-                }
-            }
-        }
-    }
-
-    scheduleFile.close();
+    std::string configNumSchedules;
+    std::getline(configFile, configNumSchedules, '\n');
+    int numSchedules = stoi(configNumSchedules);
 
     std::string logoPath;
     std::string title;
@@ -62,8 +42,8 @@ int main() {
 
     configFile.close();
 
-    Scheduler scheduler(weeks, entities, constraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
-    scheduler.createSchedules(1);
+    Scheduler scheduler(weeks, entities, matchupConstraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
+    scheduler.createSchedules(numSchedules);
 
     return 0;
 }
