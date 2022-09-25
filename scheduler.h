@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <algorithm>
 
 typedef std::unordered_map<std::string, std::unordered_map<std::string, int> > Constraints;
 typedef std::unordered_map<std::string, std::string> Matchups;
