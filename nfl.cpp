@@ -6,138 +6,75 @@ Nfl::Nfl(std::string id, bool u, int y) {
     year = y;
 }
 
-void Nfl::scrape(std::string url, std::string &text) {
-    cpr::Response response = cpr::Get(cpr::Url{url});
+xmlDoc *Nfl::scrape(std::string url) {
+    curlpp::Easy request;
+    request.setOpt(curlpp::options::Url(url));
 
-    if (response.status_code == 200) {
-        text = response.text;
-    } else {
-        std::cout << "Request not successful" << std::endl;
-        return;
-    }
+    std::ostringstream responseStream;
+    curlpp::options::WriteStream streamWriter(&responseStream);
+    request.setOpt(streamWriter);
+
+    request.perform();
+    std::string response = responseStream.str();
+
+	xmlDoc *html = htmlReadDoc((xmlChar*)response.c_str(), NULL, NULL, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+	return html;
 }
 
-void Nfl::cleanHtml(std::string &text) {
-    // Remove <head>...</head>.
-    std::regex head(R"(<head([\s\S]*?)</head>)");
-    text = std::regex_replace(text, head, "");
+void Nfl::parseManagers(xmlDoc *html) {
+	xmlXPathContextPtr context = xmlXPathNewContext(html);
 
-    // Remove <script> tags.
-    std::regex script(R"(<script([\s\S]*?)</script>)");
-    text = std::regex_replace(text, script, "");
+	xmlChar *trXPath = (xmlChar *)"//tr[contains(@class, 'team-')]";
+	xmlXPathObjectPtr trs = xmlXPathEvalExpression(trXPath, context);
 
-    // Remove comments from the html.
-    std::regex htmlComment(R"(<!--([\s\S]*?)-->)");
-    text = std::regex_replace(text, htmlComment, "");
+	xmlChar *spanXPath= (xmlChar *)"//span[contains(@class, 'userName')]";
+	for (int i = 0; i < trs->nodesetval->nodeNr; i++) {
+		xmlDocSetRootElement(html, trs->nodesetval->nodeTab[i]);
+		xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
 
-    // Remove <!doctype.
-    std::regex doctype("<!doctype html>");
-    text = std::regex_replace(text, doctype, "");
+		if (xmlXPathNodeSetIsEmpty(spans->nodesetval)) continue;
+		std::string manager = std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[0]));
 
-    std::regex htmlTag("<html.*>");
-    text = std::regex_replace(text, htmlTag, "<html>");
+		struct _xmlAttr *trAttributes = trs->nodesetval->nodeTab[i]->properties;
+		while (trAttributes) {
+			if (strcmp((const char *)trAttributes->name, "class") == 0) {
+				std::string attributeValue = std::string((char *)trAttributes->children->content);
+				std::string id = attributeValue.substr(attributeValue.find("-") + 1, 1);
+                managers[id] = manager;
+			}
 
-    // Remove img, link and a tags, for now, in order to
-    // easily modify unquoted attributes in the html.
-    // TODO: Circumvent the need to remove these tags.
-    std::regex imgTag(R"(<img([\s\S]*?)/>)");
-    text = std::regex_replace(text, imgTag, "");
+			trAttributes = trAttributes->next;
+		}
 
-    std::regex linkTag(R"(<link([\s\S]*?)/>)");
-    text = std::regex_replace(text, linkTag, "");
+		xmlXPathFreeObject(spans);
+	}
 
-    std::regex aTag(R"(<a ([\s\S]*?)>)");
-    text = std::regex_replace(text, aTag, "<a>");
-
-    // The HTML standard does not require quotes around attribute
-    // values, but the XML parser requires them.
-    // TODO: Speed this up.
-    std::regex unquotedAttribute(R"((<[\s\S]+=(?:(?!["'])))([^\s>]*))");
-    while (std::regex_search(text, unquotedAttribute)) {
-        text = std::regex_replace(text, unquotedAttribute, "$1\"$2\"");
-    }
+	xmlXPathFreeObject(trs);
 }
 
-void Nfl::traverseXml(tinyxml2::XMLElement *element, void (Nfl::*f)(tinyxml2::XMLElement *)) {
-    if (element == NULL) {
-        return;
-    }
+void Nfl::parseStandings(xmlDoc *html) {
+	xmlXPathContextPtr context = xmlXPathNewContext(html);
 
-    tinyxml2::XMLElement *next;
+	xmlChar *spanXPath = (xmlChar *)"//span[contains(@class, 'teamRank ')]";
+	xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
 
-    next = element->FirstChildElement();
-    if (next) {
-        traverseXml(next, f);
-    }
+	for (int i = 0; i < spans->nodesetval->nodeNr; i++) {
+		std::string rank = std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[i]));
+		if (strstr(rank.c_str(), "(")) continue;
 
-    next = element->NextSiblingElement();
-    if (next) {
-        traverseXml(next, f);
-    }
+		struct _xmlAttr *attributes = spans->nodesetval->nodeTab[i]->properties;
+		while (attributes) {
+			if (strcmp((const char *)attributes->name, "class") == 0) {
+				std::string attributeValue = std::string((char *)attributes->children->content);
+				std::string id(1, attributeValue.back());
+                standings[id] = atoi(rank.c_str());
+			}
 
-    (this->*f)(element);
+			attributes = attributes->next;
+		}
+	}
 
-    return;
-}
-
-void Nfl::managerSearch(tinyxml2::XMLElement* element) {
-    const char *tag = "tr";
-    const char *attributeName = "class";
-    const char *attributeValue = "team-";
-    HtmlElement data = {
-        tag,
-        attributeName,
-        attributeValue
-    };
-
-    if (strcmp(element->Name(), data.tag) == 0) {
-        const tinyxml2::XMLAttribute *attribute = element->FindAttribute(data.attributeName);
-        if (attribute) {
-            if (strstr(attribute->Value(), data.attributeValue)) {
-                tinyxml2::XMLElement *e = element->FirstChildElement()->NextSiblingElement();
-                // The text is inside the element 3 nodes down the tree.
-                tinyxml2::XMLElement *managerElement = e;
-                for (int i = 0; i < 3; i++) {
-                    managerElement = managerElement->FirstChildElement();
-                    if (managerElement == NULL) {
-                        std::cout << "Manager name not found where expected" << std::endl;
-                        return;
-                    }
-                }
-
-                // Extract the manager's name and ID.
-                std::string classes = attribute->Value();
-                std::string id = classes.substr(classes.find("-") + 1, 1);
-                std::string name = managerElement->GetText();
-                managers[id] = name;
-            }
-        }
-    }
-}
-
-void Nfl::standingsSearch(tinyxml2::XMLElement *element) {
-    const char *tag = "span";
-    const char *attributeName = "class";
-    const char *attributeValue = "teamRank ";
-    HtmlElement data = {
-        tag,
-        attributeName,
-        attributeValue
-    };
-
-    if (strcmp(element->Name(), data.tag) == 0) {
-        const tinyxml2::XMLAttribute *attribute = element->FindAttribute(data.attributeName);
-        if (attribute) {
-            if (strstr(attribute->Value(), data.attributeValue)) {
-                std::string rank = element->GetText();
-                if (!strstr(rank.c_str(), "(")) {
-                    std::string classes = attribute->Value();
-                    std::string id(1, classes.back());
-                    standings[id] = atoi(rank.c_str());
-                }
-            }
-        }
-    }
+	xmlXPathFreeObject(spans);
 }
 
 std::vector<std::string> Nfl::getManagers() {
@@ -147,15 +84,9 @@ std::vector<std::string> Nfl::getManagers() {
 
     if (update || stat(filePath.c_str(), &buffer) != 0) {
         std::string url = "https://fantasy.nfl.com/league/" + leagueId + "/owners";
-        std::string text;
-        scrape(url, text);
-        cleanHtml(text);
-        
-        tinyxml2::XMLDocument html;
-        html.Parse(text.c_str());
-
-        tinyxml2::XMLElement *rootElement = html.FirstChildElement();
-        traverseXml(rootElement, &Nfl::managerSearch);
+		xmlDoc *html = scrape(url);
+		parseManagers(html);
+		xmlFreeDoc(html);
 
         std::ofstream file(filePath);
 
@@ -186,15 +117,9 @@ void Nfl::getStandings() {
     std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
         "/history/" + std::to_string(year) + 
         "/standings?historyStandingsType=regular";
-    std::string text;
-    scrape(url, text);
-    cleanHtml(text);
-
-    tinyxml2::XMLDocument html;
-    html.Parse(text.c_str());
-
-    tinyxml2::XMLElement *rootElement = html.FirstChildElement();
-    traverseXml(rootElement, &Nfl::standingsSearch);
+	xmlDoc *html = scrape(url);
+	parseStandings(html);
+	xmlFreeDoc(html);
 }
 
 Constraints Nfl::getMatchupConstraints() {

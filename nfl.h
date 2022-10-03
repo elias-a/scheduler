@@ -7,8 +7,10 @@
 #include <vector>
 #include <unordered_map>
 #include <regex>
-#include <cpr/cpr.h>
-#include "tinyxml2.h"
+#include <libxml/HTMLparser.h>
+#include <libxml/xpath.h>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
 #include "scheduler.h"
 
 struct HtmlElement {
@@ -29,10 +31,8 @@ class Nfl {
         int year;
         std::unordered_map<std::string, std::string> managers;
         std::unordered_map<std::string, int> standings;
-        void scrape(std::string url, std::string &text);
-        void cleanHtml(std::string &text);
-        void traverseXml(tinyxml2::XMLElement *e, void (Nfl::*)(tinyxml2::XMLElement *));
-        void managerSearch(tinyxml2::XMLElement *);
-        void standingsSearch(tinyxml2::XMLElement *);
+		xmlDoc *scrape(std::string url);
+		void parseManagers(xmlDoc *html);
+		void parseStandings(xmlDoc *html);
         void getStandings();
 };
