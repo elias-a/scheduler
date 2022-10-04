@@ -6,18 +6,34 @@ Nfl::Nfl(std::string id, bool u, int y) {
     year = y;
 }
 
-xmlDoc *Nfl::scrape(std::string url) {
-    curlpp::Easy request;
-    request.setOpt(curlpp::options::Url(url));
+size_t getCurlResponse(char *ptr, size_t size, size_t nmemb, void *data) {
+    std::string *str = (std::string *) data;
 
-    std::ostringstream responseStream;
-    curlpp::options::WriteStream streamWriter(&responseStream);
-    request.setOpt(streamWriter);
+    for (int i = 0; i < size * nmemb; i++) {
+        (*str) += ptr[i];
+    }
 
-    request.perform();
-    std::string response = responseStream.str();
+    return size * nmemb;
+}
 
-	xmlDoc *html = htmlReadDoc((xmlChar*)response.c_str(), NULL, NULL, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
+xmlDoc *Nfl::scrape(const char *url) {
+    CURL *curl;
+    CURLcode responseCode;
+    std::string response;
+
+    curl = curl_easy_init();
+    if (!curl) throw;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, getCurlResponse);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+    responseCode = curl_easy_perform(curl);
+    if (responseCode != CURLE_OK) throw;
+
+    curl_easy_cleanup(curl);
+
+	xmlDoc *html = htmlReadDoc((xmlChar *)response.c_str(), NULL, NULL, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
 	return html;
 }
 
@@ -84,7 +100,7 @@ std::vector<std::string> Nfl::getManagers() {
 
     if (update || stat(filePath.c_str(), &buffer) != 0) {
         std::string url = "https://fantasy.nfl.com/league/" + leagueId + "/owners";
-		xmlDoc *html = scrape(url);
+		xmlDoc *html = scrape(url.c_str());
 		parseManagers(html);
 		xmlFreeDoc(html);
 
@@ -117,7 +133,7 @@ void Nfl::getStandings() {
     std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
         "/history/" + std::to_string(year) + 
         "/standings?historyStandingsType=regular";
-	xmlDoc *html = scrape(url);
+	xmlDoc *html = scrape(url.c_str());
 	parseStandings(html);
 	xmlFreeDoc(html);
 }

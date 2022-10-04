@@ -7,10 +7,9 @@
 #include <vector>
 #include <unordered_map>
 #include <regex>
+#include <curl/curl.h>
 #include <libxml/HTMLparser.h>
 #include <libxml/xpath.h>
-#include <curlpp/Easy.hpp>
-#include <curlpp/Options.hpp>
 #include "scheduler.h"
 
 struct HtmlElement {
@@ -31,7 +30,7 @@ class Nfl {
         int year;
         std::unordered_map<std::string, std::string> managers;
         std::unordered_map<std::string, int> standings;
-		xmlDoc *scrape(std::string url);
+		xmlDoc *scrape(const char *url);
 		void parseManagers(xmlDoc *html);
 		void parseStandings(xmlDoc *html);
         void getStandings();
