@@ -46,6 +46,7 @@ void Scheduler::createSchedules(int n) {
         scheduleWeek(1);
 
         if (validateSchedule()) {
+            int score = scoreSchedule();
             printSchedule();
 
             std::string filePath = "output/schedule" + std::to_string(index);
@@ -356,4 +357,48 @@ void Scheduler::generatePdf(std::string filePath) {
 
     // Delete the created html file.
     system("rm schedule.html");
+}
+
+int Scheduler::scoreSchedule() {
+    std::ifstream scoringCriteriaFile("data/scoring-criteria.txt");
+
+    Criteria scoringCriteria;
+    std::string scoringCriteriaLine;
+    int week = -1;
+    while (std::getline(scoringCriteriaFile, scoringCriteriaLine, '\n')) {
+        if (scoringCriteriaLine.size() > 0) {
+            int delimiterIndex = scoringCriteriaLine.find("|");
+
+            if (delimiterIndex < 0) {
+                week = stoi(scoringCriteriaLine);
+
+                if (scoringCriteria.find(week) == scoringCriteria.end()) {
+                    scoringCriteria[week] = {};
+                }
+            } else {
+                std::string entity = scoringCriteriaLine.substr(0, delimiterIndex);
+                std::string opponent = scoringCriteriaLine.substr(delimiterIndex + 1);
+
+                if (week > -1) {
+                    scoringCriteria[week][entity] = opponent;
+                    scoringCriteria[week][opponent] = entity;
+                }
+            }
+        }
+    }
+
+    scoringCriteriaFile.close();
+
+    int score = 0;
+    for (int week = 1; week <= weeks; week++) {
+        if (scoringCriteria.find(week) != scoringCriteria.end()) {
+            for (auto it = scoringCriteria[week].begin(); it != scoringCriteria[week].end(); ++it) {
+                if (schedule[week - 1][it->first] == it->second) {
+                    ++score;
+                }
+            }
+        }
+    }
+
+    return score;
 }

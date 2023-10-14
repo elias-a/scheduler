@@ -10,6 +10,7 @@
 
 typedef std::unordered_map<std::string, std::unordered_map<std::string, int> > Constraints;
 typedef std::unordered_map<std::string, std::string> Matchups;
+typedef std::unordered_map<int, std::unordered_map<std::string, std::string> > Criteria;
 
 class Scheduler {
     public:
@@ -38,4 +39,5 @@ class Scheduler {
         void cleanup(int w, int n);
         bool checkMatchup(int w, std::string e, std::string o);
         bool validateSchedule();
+        int scoreSchedule();
 };
