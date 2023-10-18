@@ -1,17 +1,20 @@
-#include <fstream>
 #include <ctime>
+#include <toml.hpp>
 #include "scheduler.h"
 #include "nfl.h"
 
 int main() {
-    std::ifstream configFile("config.txt");
-
-    std::string leagueId;
-    std::getline(configFile, leagueId, '\n');
-
-    std::string configUpdate;
-    std::getline(configFile, configUpdate, '\n');
-    bool update = configUpdate.compare("true") == 0;
+    const auto config = toml::parse("config.toml");
+    const auto &leagueConfig = toml::find(config, "LEAGUE");
+    const std::string leagueId = toml::find<std::string>(leagueConfig, "LEAGUE_ID");
+    const auto &scheduleConfig = toml::find(config, "SCHEDULE");
+    const bool update = toml::find<bool>(scheduleConfig, "UPDATE_DATA");
+    const int weeks = toml::find<int>(scheduleConfig, "NUM_WEEKS");
+    const int weeksBetweenMatchups = toml::find<int>(scheduleConfig, "WEEKS_BETWEEN_MATCHUPS");
+    const int numSchedules = toml::find<int>(scheduleConfig, "NUM_SCHEDULES");
+    const auto &outputConfig = toml::find(config, "OUTPUT");
+    const std::string logoPath = toml::find<std::string>(outputConfig, "LOGO_PATH");
+    const std::string title = toml::find<std::string>(outputConfig, "SCHEDULE_TITLE");
 
     std::time_t time = std::time(nullptr);
     const std::tm *timeInfo = std::localtime(&time);
@@ -21,28 +24,16 @@ int main() {
     std::vector<std::string> entities = nfl.getManagers();
     Constraints matchupConstraints = nfl.getMatchupConstraints();
 
-    std::string configWeeks;
-    std::string configWeeksBetweenMatchups;
-    std::getline(configFile, configWeeks, '\n');
-    std::getline(configFile, configWeeksBetweenMatchups, '\n');
-    int weeks = stoi(configWeeks);
-    int weeksBetweenMatchups = stoi(configWeeksBetweenMatchups);
-
     std::vector<Matchups> scheduleConstraints = nfl.getScheduleConstraints(weeks);
 
-    std::string configNumSchedules;
-    std::getline(configFile, configNumSchedules, '\n');
-    int numSchedules = stoi(configNumSchedules);
-
-    std::string logoPath;
-    std::string title;
-
-    std::getline(configFile, logoPath, '\n');
-    std::getline(configFile, title, '\n');
-
-    configFile.close();
-
-    Scheduler scheduler(weeks, entities, matchupConstraints, scheduleConstraints, weeksBetweenMatchups, logoPath, title);
+    Scheduler scheduler(
+        weeks,
+        entities,
+        matchupConstraints,
+        scheduleConstraints,
+        weeksBetweenMatchups,
+        logoPath,
+        title);
     scheduler.createSchedules(numSchedules);
 
     return 0;
