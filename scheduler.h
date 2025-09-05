@@ -5,20 +5,36 @@
 #include <unordered_map>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <cmath>
 #include <algorithm>
 
+struct Matchup {
+  int week;
+  std::string entity1;
+  std::string entity2;
+
+  Matchup(int w, std::string e1, std::string e2) : week(w), entity1(e1), entity2(e2) {}
+};
+
 typedef std::unordered_map<std::string, std::unordered_map<std::string, int> > Constraints;
 typedef std::unordered_map<std::string, std::string> Matchups;
-typedef std::unordered_map<int, std::unordered_map<std::string, std::string> > Criteria;
+typedef std::vector<Matchup> Criteria;
+typedef std::vector<Matchups> Schedule;
+
+struct ScoredSchedule {
+  Schedule schedule;
+  int score;
+  Criteria matchedCriteria;
+};
 
 class Scheduler {
     public:
         Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm, std::string lp, std::string t);
         void createSchedules(int n);
-        void printSchedule();
-        void generateOutput(std::string fp);
-        void generateCsv(std::string fp);
+        void printSchedule(Schedule& s);
+        void generateOutput(ScoredSchedule& s, std::string fp);
+        void generateCsv(ScoredSchedule& s, std::string fp);
         void generatePdf(std::string fp);
     private:
         int weeks;
@@ -26,11 +42,14 @@ class Scheduler {
         Constraints constraints;
         std::vector<Matchups> scheduleConstraints;
         int weeksBetweenMatchups;
+        Criteria scoringCriteria;
         Constraints constraintsCheck;
-        std::vector<Matchups> schedule;
+        Schedule schedule;
         std::string logoPath;
         std::string title;
 
+        void cleanOutputDirectory(std::string p);
+        std::string createScheduleID(int n);
         void initializeSchedule();
         void insertScheduleConstraints();
         void scheduleWeek(int w);
@@ -39,5 +58,8 @@ class Scheduler {
         void cleanup(int w, int n);
         bool checkMatchup(int w, std::string e, std::string o);
         bool validateSchedule();
-        int scoreSchedule();
+
+        void loadScoringCriteria(std::string p);
+        ScoredSchedule scoreSchedule(Schedule& s);
+        void printScoring(ScoredSchedule& s);
 };

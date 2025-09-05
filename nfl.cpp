@@ -1,4 +1,5 @@
 #include "nfl.h"
+#include <cstring>
 
 Nfl::Nfl(std::string id, bool u, int y) {
     leagueId = id;

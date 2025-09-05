@@ -9,6 +9,27 @@ Scheduler::Scheduler(int w, std::vector<std::string> e, Constraints c, std::vect
     weeksBetweenMatchups = wbm;
     logoPath = lp;
     title = t;
+
+    cleanOutputDirectory("output");
+    loadScoringCriteria("data/scoring-criteria.txt");
+}
+
+void Scheduler::cleanOutputDirectory(std::string outputPath) {
+  std::filesystem::path outputDir(outputPath);
+  for (const auto& entry : std::filesystem::directory_iterator(outputDir)) {
+    std::filesystem::remove_all(entry.path());
+  }
+}
+
+std::string Scheduler::createScheduleID(int n) {
+  std::string id;
+  ++n;
+  while (n > 0) {
+    int r = (n - 1) % 26;
+    id = static_cast<char>('A' + r) + id;
+    n = (n - 1) / 26;
+  }
+  return id;
 }
 
 void Scheduler::initializeSchedule() {
@@ -26,11 +47,11 @@ void Scheduler::initializeSchedule() {
     }
 }
 
-void Scheduler::printSchedule() {
+void Scheduler::printSchedule(Schedule& sched) {
     for (int week = 1; week <= weeks; week++) {
         std::cout << "Week " << week << std::endl;
-    
-        for (const auto &matchup : schedule[week - 1]) {
+
+        for (const auto &matchup : sched[week - 1]) {
             std::cout << "\t";
             std::cout << matchup.first << " - ";
             std::cout << matchup.second << std::endl;
@@ -39,22 +60,40 @@ void Scheduler::printSchedule() {
 }
 
 void Scheduler::createSchedules(int n) {
-    for (int index = 1; index <= n; index++) {
-        srand(time(0));
+  srand(time(0));
+
+  std::vector<ScoredSchedule> schedules;
+  while (schedules.size() < n) {
         initializeSchedule();
         insertScheduleConstraints();
         scheduleWeek(1);
 
         if (validateSchedule()) {
-            int score = scoreSchedule();
-            printSchedule();
+          bool alreadyFound = std::any_of(schedules.begin(), schedules.end(),
+                            [this](const ScoredSchedule& sched) {
+                                return sched.schedule == schedule;
+                            });
+          if (alreadyFound) continue;
 
-            std::string filePath = "output/schedule" + std::to_string(index);
-            generateOutput(filePath);
+          ScoredSchedule scoredSchedule = scoreSchedule(schedule);
+          schedules.push_back(scoredSchedule);
         } else {
             std::cout << "Not a valid schedule" << std::endl;
         }
     }
+
+  std::sort(schedules.begin(), schedules.end(), 
+            [](const ScoredSchedule& sched1, const ScoredSchedule& sched2) {
+              return sched1.score > sched2.score;
+            });
+
+  int numFinalSchedules = std::min(n, 10);
+  for (int i = 0; i < numFinalSchedules; ++i) {
+    //printScoring(schedules[i]);
+    //printSchedule(schedules[i].schedule);
+    std::string filePath = "output/schedule" + createScheduleID(i) + "-" + std::to_string(schedules[i].score);
+    generateOutput(schedules[i], filePath);
+  }
 }
 
 void Scheduler::insertScheduleConstraints() {
@@ -276,29 +315,36 @@ bool Scheduler::validateSchedule() {
     return true;
 }
 
-void Scheduler::generateOutput(std::string filePath) {
-    generateCsv(filePath);
-    generatePdf(filePath);
+void Scheduler::generateOutput(ScoredSchedule& sched, std::string filePath) {
+    generateCsv(sched, filePath);
+    //generatePdf(filePath);
 }
 
-void Scheduler::generateCsv(std::string filePath) {
-    std::ofstream file(filePath + ".csv");
+void Scheduler::generateCsv(ScoredSchedule& sched, std::string filePath) {
+  std::ofstream file(filePath + ".csv");
 
-    file << "Week";
+  file << "Score: " << sched.score << "\n";
+  file << "Matched Criteria:" << "\n";
+  for (auto [week, entity1, entity2] : sched.matchedCriteria) {
+    file << "\tWeek " << week << "\t" << entity1 << " vs. " << entity2 << "\n";
+  }
+  file << "\n";
+
+  file << "Week";
+  for (const auto &entity : entities) {
+    file << "," + entity;
+  }
+  file << "\n";
+
+  for (int week = 1; week <= weeks; week++) {
+    file << week;
     for (const auto &entity : entities) {
-        file << "," + entity;
+      file << "," << sched.schedule[week - 1][entity];
     }
     file << "\n";
+  }
 
-    for (int week = 1; week <= weeks; week++) {
-        file << week;
-        for (const auto &entity : entities) {
-            file << "," << schedule[week - 1][entity];
-        }
-        file << "\n";
-    }
-
-    file.close();
+  file.close();
 }
 
 void Scheduler::generatePdf(std::string filePath) {
@@ -359,46 +405,59 @@ void Scheduler::generatePdf(std::string filePath) {
     system("rm schedule.html");
 }
 
-int Scheduler::scoreSchedule() {
-    std::ifstream scoringCriteriaFile("data/scoring-criteria.txt");
+void Scheduler::loadScoringCriteria(std::string scoringCriteriaPath) {
+  std::ifstream scoringCriteriaFile(scoringCriteriaPath);
 
-    Criteria scoringCriteria;
-    std::string scoringCriteriaLine;
-    int week = -1;
-    while (std::getline(scoringCriteriaFile, scoringCriteriaLine, '\n')) {
-        if (scoringCriteriaLine.size() > 0) {
-            int delimiterIndex = scoringCriteriaLine.find("|");
+  int week = 0;  // Weeks start at 1
+  std::string line;
+  while (std::getline(scoringCriteriaFile, line, '\n')) {
+    if (line.size() > 0) {
+      int delimiterIndex = line.find("|");
 
-            if (delimiterIndex < 0) {
-                week = stoi(scoringCriteriaLine);
+      if (delimiterIndex < 0) {
+        // This line is a week number.
+        week = stoi(line);
+      } else {
+        // This line is a matchup, e.g., Team1|Team2.
+        std::string entity = line.substr(0, delimiterIndex);
+        std::string opponent = line.substr(delimiterIndex+1);
 
-                if (scoringCriteria.find(week) == scoringCriteria.end()) {
-                    scoringCriteria[week] = {};
-                }
-            } else {
-                std::string entity = scoringCriteriaLine.substr(0, delimiterIndex);
-                std::string opponent = scoringCriteriaLine.substr(delimiterIndex + 1);
+        // TODO: Check that `entity` and `opponent` are valid entities.
 
-                if (week > -1) {
-                    scoringCriteria[week][entity] = opponent;
-                    scoringCriteria[week][opponent] = entity;
-                }
-            }
+        if (week > 0) {
+          scoringCriteria.emplace_back(week, entity, opponent);
+        } else {
+          throw std::invalid_argument(
+            std::string("Error reading scoring criteria file: no week ") + 
+            "is associated with the matchup " + entity + " vs. " + 
+            opponent + "."
+          );
         }
+      }
     }
+  }
 
-    scoringCriteriaFile.close();
+  scoringCriteriaFile.close();
+}
 
-    int score = 0;
-    for (int week = 1; week <= weeks; week++) {
-        if (scoringCriteria.find(week) != scoringCriteria.end()) {
-            for (auto it = scoringCriteria[week].begin(); it != scoringCriteria[week].end(); ++it) {
-                if (schedule[week - 1][it->first] == it->second) {
-                    ++score;
-                }
-            }
-        }
+ScoredSchedule Scheduler::scoreSchedule(Schedule& sched) {
+  int score = 0;
+  Criteria matchedCriteria;
+
+  for (auto [week, entity1, entity2] : scoringCriteria) {
+    if (sched[week-1][entity1] == entity2) {
+      ++score;
+      matchedCriteria.emplace_back(week, entity1, entity2);
     }
+  }
 
-    return score;
+  return ScoredSchedule{sched, score, matchedCriteria};
+}
+
+void Scheduler::printScoring(ScoredSchedule& schedule) {
+  std::cout << "Score: " << schedule.score << std::endl;
+  std::cout << "Matched Criteria:" << std::endl;
+  for (auto [week, entity1, entity2] : schedule.matchedCriteria) {
+    std::cout << "\tWeek " << week << "\t" << entity1 << "\t" << entity2 << std::endl;
+  }
 }

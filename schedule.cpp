@@ -10,7 +10,7 @@ int main() {
     const auto &scheduleConfig = toml::find(config, "SCHEDULE");
     const bool update = toml::find<bool>(scheduleConfig, "UPDATE_DATA");
     const int weeks = toml::find<int>(scheduleConfig, "NUM_WEEKS");
-    const int weeksBetweenMatchups = toml::find<int>(scheduleConfig, "WEEKS_BETWEEN_MATCHUPS");
+    const int weeksBetweenMatchups = toml::find<int>(scheduleConfig, "NUM_WEEKS_BETWEEN_MATCHUPS");
     const int numSchedules = toml::find<int>(scheduleConfig, "NUM_SCHEDULES");
     const auto &outputConfig = toml::find(config, "OUTPUT");
     const std::string logoPath = toml::find<std::string>(outputConfig, "LOGO_PATH");
