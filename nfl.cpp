@@ -221,7 +221,6 @@ std::vector<Matchups> Nfl::getScheduleConstraints(int weeks) {
 
             if (delimiterIndex < 0) {
                 week = stoi(scheduleLine);
-                scheduleConstraints[week] = {};
             } else {
                 std::string entity = scheduleLine.substr(0, delimiterIndex);
                 std::string opponent = scheduleLine.substr(delimiterIndex + 1);
