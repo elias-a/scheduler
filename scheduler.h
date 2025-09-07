@@ -17,7 +17,12 @@ struct Matchup {
   Matchup(int w, std::string e1, std::string e2) : week(w), entity1(e1), entity2(e2) {}
 };
 
-typedef std::unordered_map<std::string, std::unordered_map<std::string, int> > Constraints;
+template<typename K, typename V>
+using Constraints = std::unordered_map<K, std::unordered_map<std::string, V>>;
+
+using MatchupConstraints = Constraints<std::string, int>;
+using ScheduleConstraints = Constraints<int, std::string>;
+
 typedef std::unordered_map<std::string, std::string> Matchups;
 typedef std::vector<Matchup> Criteria;
 typedef std::vector<Matchups> Schedule;
@@ -30,7 +35,15 @@ struct ScoredSchedule {
 
 class Scheduler {
     public:
-        Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm, std::string lp, std::string t);
+        Scheduler(
+          int weeks_,
+          std::vector<std::string> entities_,
+          MatchupConstraints constraints_,
+          ScheduleConstraints scheduleConstraints_,
+          int weeksBetweenMatchups_,
+          std::string logoPath_,
+          std::string title_
+        );
         void createSchedules(int n);
         void printSchedule(Schedule& s);
         void generateOutput(ScoredSchedule& s, std::string fp);
@@ -39,11 +52,11 @@ class Scheduler {
     private:
         int weeks;
         std::vector<std::string> entities;
-        Constraints constraints;
-        std::vector<Matchups> scheduleConstraints;
+        MatchupConstraints constraints;
+        ScheduleConstraints scheduleConstraints;
         int weeksBetweenMatchups;
         Criteria scoringCriteria;
-        Constraints constraintsCheck;
+        MatchupConstraints constraintsCheck;
         Schedule schedule;
         std::string logoPath;
         std::string title;

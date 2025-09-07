@@ -22,9 +22,8 @@ int main() {
 
     Nfl nfl(leagueId, update, previousYear);
     std::vector<std::string> entities = nfl.getManagers();
-    Constraints matchupConstraints = nfl.getMatchupConstraints();
-
-    std::vector<Matchups> scheduleConstraints = nfl.getScheduleConstraints(weeks);
+    MatchupConstraints matchupConstraints = nfl.getMatchupConstraints();
+    ScheduleConstraints scheduleConstraints = nfl.getScheduleConstraints(weeks);
 
     Scheduler scheduler(
         weeks,

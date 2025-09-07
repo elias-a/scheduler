@@ -139,8 +139,8 @@ void Nfl::getStandings() {
 	xmlFreeDoc(html);
 }
 
-Constraints Nfl::getMatchupConstraints() {
-    Constraints constraints;
+MatchupConstraints Nfl::getMatchupConstraints() {
+    MatchupConstraints constraints;
     std::string filePath = "data/constraints.txt";
     struct stat buffer;
 
@@ -205,29 +205,34 @@ Constraints Nfl::getMatchupConstraints() {
     return constraints;
 }
 
-std::vector<Matchups> Nfl::getScheduleConstraints(int weeks) {
+ScheduleConstraints Nfl::getScheduleConstraints(int weeks) {
     std::ifstream scheduleFile("data/schedule-constraints.txt");
-
-    std::vector<Matchups> scheduleConstraints;
-    for (int index = 0; index < weeks; index++) {
-        scheduleConstraints.push_back({});
-    }
-
-    std::string scheduleLine;
-    int week = -1;
-    while (std::getline(scheduleFile, scheduleLine, '\n')) {
-        if (scheduleLine.size() > 0) {
-            int delimiterIndex = scheduleLine.find("|");
+    ScheduleConstraints constraints;
+    std::string line;
+    int week = 0;
+    while (std::getline(scheduleFile, line, '\n')) {
+        if (line.size() > 0) {
+            int delimiterIndex = line.find("|");
 
             if (delimiterIndex < 0) {
-                week = stoi(scheduleLine);
+                week = stoi(line);
+                if (week <= weeks) {
+                  constraints[week] = {};
+                } else {
+                  throw std::invalid_argument(
+                    std::string("Error reading schedule constraints file: ") + 
+                    "a constraint was provided for week " + line +
+                    "but the season begins on week 1 and is " +
+                    std::to_string(weeks) + " long."
+                  );
+                }
             } else {
-                std::string entity = scheduleLine.substr(0, delimiterIndex);
-                std::string opponent = scheduleLine.substr(delimiterIndex + 1);
+                std::string entity = line.substr(0, delimiterIndex);
+                std::string opponent = line.substr(delimiterIndex + 1);
 
-                if (week > -1 && scheduleConstraints.size() >= week) {
-                    scheduleConstraints[week - 1][entity] = opponent;
-                    scheduleConstraints[week - 1][opponent] = entity;
+                if (constraints.contains(week)) {
+                    constraints[week][entity] = opponent;
+                    constraints[week][opponent] = entity;
                 }
             }
         }
@@ -235,5 +240,5 @@ std::vector<Matchups> Nfl::getScheduleConstraints(int weeks) {
 
     scheduleFile.close();
 
-    return scheduleConstraints;
+    return constraints;
 }

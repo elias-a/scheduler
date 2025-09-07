@@ -1,15 +1,21 @@
 #include "scheduler.h"
 
-Scheduler::Scheduler(int w, std::vector<std::string> e, Constraints c, std::vector<Matchups> sc, int wbm, std::string lp, std::string t) {    
-    weeks = w;
-    entities = e;
-    constraints = c;
-    constraintsCheck = c;
-    scheduleConstraints = sc;
-    weeksBetweenMatchups = wbm;
-    logoPath = lp;
-    title = t;
-
+Scheduler::Scheduler(
+  int weeks_,
+  std::vector<std::string> entities_,
+  MatchupConstraints constraints_,
+  ScheduleConstraints scheduleConstraints_,
+  int weeksBetweenMatchups_,
+  std::string logoPath_,
+  std::string title_
+) : weeks(weeks_)
+  , entities(entities_)
+  , constraints(constraints_)
+  , constraintsCheck(constraints_)
+  , scheduleConstraints(scheduleConstraints_)
+  , weeksBetweenMatchups(weeksBetweenMatchups_)
+  , logoPath(logoPath_)
+  , title(title_) {
     cleanOutputDirectory("output");
     loadScoringCriteria("data/scoring-criteria.txt");
 }
@@ -97,19 +103,12 @@ void Scheduler::createSchedules(int n) {
 }
 
 void Scheduler::insertScheduleConstraints() {
-    for (int index = 0; index < weeks; index++) {
-        if (scheduleConstraints.size() <= index) {
-            break;
-        }
-
-        for (const auto &matchup : scheduleConstraints[index]) {
-            std::string entity = matchup.first;
-            std::string opponent = matchup.second;
-
-            schedule[index][entity] = opponent;
-            constraints[entity][opponent]--;
-        }
+  for (auto [week, matchups] : scheduleConstraints) {
+    for (auto [entity, opponent] : matchups) {
+      schedule[week - 1][entity] = opponent;
+      --constraints[entity][opponent];
     }
+  }
 }
 
 // This method schedules a matchup for all entities
@@ -117,10 +116,7 @@ void Scheduler::insertScheduleConstraints() {
 void Scheduler::scheduleWeek(int week) {
     if (week > weeks) {
         return;
-    } else if (
-        scheduleConstraints.size() > week - 1 &&
-        scheduleConstraints[week - 1].size() > 0
-    ) {
+    } else if (scheduleConstraints.contains(week)) {
         // If the week is determined by schedule constraints,
         // move to the next week.
         return scheduleWeek(week + 1);
@@ -200,14 +196,11 @@ void Scheduler::cleanup(int currentWeek, int newWeek) {
     // and the current week, and undo any changes that
     // have been made to instance variables.
     for (int week = newWeek; week <= currentWeek; week++) {
-        if (
-            scheduleConstraints.size() > week - 1 &&
-            scheduleConstraints[week - 1].size() > 0
-        ) {
-            // Do not modify weeks that are determined by
-            // schedule constraints.
-            continue;
-        }
+      if (scheduleConstraints.contains(week)) {
+        // Do not modify weeks that are determined by
+        // schedule constraints.
+        continue;
+      }
 
         for (const auto &matchup : schedule[week - 1]) {
             std::string entity = matchup.first;
@@ -256,7 +249,7 @@ bool Scheduler::checkMatchup(int week, std::string entity, std::string opponent)
 
 // Checks whether the created schedule meets the given constraints.
 bool Scheduler::validateSchedule() {
-    Constraints testConstraints;
+    MatchupConstraints testConstraints;
 
     // Check whether the schedule length differs from the requested
     // number of weeks.
@@ -301,15 +294,12 @@ bool Scheduler::validateSchedule() {
     }
 
     // Check that any schedule constraints are met.
-    for (int index = 0; index < scheduleConstraints.size(); index++) {
-        for (const auto &matchup : scheduleConstraints[index]) {
-            std::string entity = matchup.first;
-            std::string opponent = matchup.second;
-
-            if (schedule[index][entity].compare(opponent) != 0) {
-                return false;
-            }
+    for (auto [week, matchups] : scheduleConstraints) {
+      for (auto [entity, opponent] : matchups) {
+        if (schedule[week - 1][entity] != opponent) {
+          return false;
         }
+      }
     }
 
     return true;

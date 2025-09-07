@@ -22,8 +22,8 @@ class Nfl {
     public:
         Nfl(std::string id, bool u, int y);
         std::vector<std::string> getManagers();
-        Constraints getMatchupConstraints();
-        std::vector<Matchups> getScheduleConstraints(int weeks);
+        MatchupConstraints getMatchupConstraints();
+        ScheduleConstraints getScheduleConstraints(int weeks);
     private:
         std::string leagueId;
         bool update;
