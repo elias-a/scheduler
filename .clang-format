@@ -2,5 +2,8 @@ BasedOnStyle: Google
 IndentWidth: 4
 AccessModifierOffset: -4
 ColumnLimit: 80
-AllowShortIfStatementsOnASingleLine: false
-AllowShortLoopsOnASingleLine: false
+
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: false
+BinPackArguments: false
+AlignAfterOpenBracket: BlockIndent

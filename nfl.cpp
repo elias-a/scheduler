@@ -1,4 +1,5 @@
 #include "nfl.h"
+
 #include <cstring>
 
 Nfl::Nfl(std::string id, bool u, int y) {
@@ -8,7 +9,7 @@ Nfl::Nfl(std::string id, bool u, int y) {
 }
 
 size_t getCurlResponse(char *ptr, size_t size, size_t nmemb, void *data) {
-    std::string *str = (std::string *) data;
+    std::string *str = (std::string *)data;
 
     for (int i = 0; i < size * nmemb; i++) {
         (*str) += ptr[i];
@@ -34,64 +35,76 @@ xmlDoc *Nfl::scrape(const char *url) {
 
     curl_easy_cleanup(curl);
 
-	xmlDoc *html = htmlReadDoc((xmlChar *)response.c_str(), NULL, NULL, HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING);
-	return html;
+    xmlDoc *html = htmlReadDoc(
+        (xmlChar *)response.c_str(),
+        NULL,
+        NULL,
+        HTML_PARSE_RECOVER | HTML_PARSE_NOERROR | HTML_PARSE_NOWARNING
+    );
+    return html;
 }
 
 void Nfl::parseManagers(xmlDoc *html) {
-	xmlXPathContextPtr context = xmlXPathNewContext(html);
+    xmlXPathContextPtr context = xmlXPathNewContext(html);
 
-	xmlChar *trXPath = (xmlChar *)"//tr[contains(@class, 'team-')]";
-	xmlXPathObjectPtr trs = xmlXPathEvalExpression(trXPath, context);
+    xmlChar *trXPath = (xmlChar *)"//tr[contains(@class, 'team-')]";
+    xmlXPathObjectPtr trs = xmlXPathEvalExpression(trXPath, context);
 
-	xmlChar *spanXPath= (xmlChar *)"//span[contains(@class, 'userName')]";
-	for (int i = 0; i < trs->nodesetval->nodeNr; i++) {
-		xmlDocSetRootElement(html, trs->nodesetval->nodeTab[i]);
-		xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
+    xmlChar *spanXPath = (xmlChar *)"//span[contains(@class, 'userName')]";
+    for (int i = 0; i < trs->nodesetval->nodeNr; i++) {
+        xmlDocSetRootElement(html, trs->nodesetval->nodeTab[i]);
+        xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
 
-		if (xmlXPathNodeSetIsEmpty(spans->nodesetval)) continue;
-		std::string manager = std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[0]));
+        if (xmlXPathNodeSetIsEmpty(spans->nodesetval)) continue;
+        std::string manager =
+            std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[0])
+            );
 
-		struct _xmlAttr *trAttributes = trs->nodesetval->nodeTab[i]->properties;
-		while (trAttributes) {
-			if (strcmp((const char *)trAttributes->name, "class") == 0) {
-				std::string attributeValue = std::string((char *)trAttributes->children->content);
-				std::string id = attributeValue.substr(attributeValue.find("-") + 1, 1);
+        struct _xmlAttr *trAttributes = trs->nodesetval->nodeTab[i]->properties;
+        while (trAttributes) {
+            if (strcmp((const char *)trAttributes->name, "class") == 0) {
+                std::string attributeValue =
+                    std::string((char *)trAttributes->children->content);
+                std::string id =
+                    attributeValue.substr(attributeValue.find("-") + 1, 1);
                 managers[id] = manager;
-			}
+            }
 
-			trAttributes = trAttributes->next;
-		}
+            trAttributes = trAttributes->next;
+        }
 
-		xmlXPathFreeObject(spans);
-	}
+        xmlXPathFreeObject(spans);
+    }
 
-	xmlXPathFreeObject(trs);
+    xmlXPathFreeObject(trs);
 }
 
 void Nfl::parseStandings(xmlDoc *html) {
-	xmlXPathContextPtr context = xmlXPathNewContext(html);
+    xmlXPathContextPtr context = xmlXPathNewContext(html);
 
-	xmlChar *spanXPath = (xmlChar *)"//span[contains(@class, 'teamRank ')]";
-	xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
+    xmlChar *spanXPath = (xmlChar *)"//span[contains(@class, 'teamRank ')]";
+    xmlXPathObjectPtr spans = xmlXPathEvalExpression(spanXPath, context);
 
-	for (int i = 0; i < spans->nodesetval->nodeNr; i++) {
-		std::string rank = std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[i]));
-		if (strstr(rank.c_str(), "(")) continue;
+    for (int i = 0; i < spans->nodesetval->nodeNr; i++) {
+        std::string rank =
+            std::string((char *)xmlNodeGetContent(spans->nodesetval->nodeTab[i])
+            );
+        if (strstr(rank.c_str(), "(")) continue;
 
-		struct _xmlAttr *attributes = spans->nodesetval->nodeTab[i]->properties;
-		while (attributes) {
-			if (strcmp((const char *)attributes->name, "class") == 0) {
-				std::string attributeValue = std::string((char *)attributes->children->content);
-				std::string id(1, attributeValue.back());
+        struct _xmlAttr *attributes = spans->nodesetval->nodeTab[i]->properties;
+        while (attributes) {
+            if (strcmp((const char *)attributes->name, "class") == 0) {
+                std::string attributeValue =
+                    std::string((char *)attributes->children->content);
+                std::string id(1, attributeValue.back());
                 standings[id] = atoi(rank.c_str());
-			}
+            }
 
-			attributes = attributes->next;
-		}
-	}
+            attributes = attributes->next;
+        }
+    }
 
-	xmlXPathFreeObject(spans);
+    xmlXPathFreeObject(spans);
 }
 
 std::vector<std::string> Nfl::getManagers() {
@@ -100,10 +113,11 @@ std::vector<std::string> Nfl::getManagers() {
     struct stat buffer;
 
     if (update || stat(filePath.c_str(), &buffer) != 0) {
-        std::string url = "https://fantasy.nfl.com/league/" + leagueId + "/owners";
-		xmlDoc *html = scrape(url.c_str());
-		parseManagers(html);
-		xmlFreeDoc(html);
+        std::string url =
+            "https://fantasy.nfl.com/league/" + leagueId + "/owners";
+        xmlDoc *html = scrape(url.c_str());
+        parseManagers(html);
+        xmlFreeDoc(html);
 
         std::ofstream file(filePath);
 
@@ -131,12 +145,12 @@ std::vector<std::string> Nfl::getManagers() {
 }
 
 void Nfl::getStandings() {
-    std::string url = "https://fantasy.nfl.com/league/" + leagueId + 
-        "/history/" + std::to_string(year) + 
-        "/standings?historyStandingsType=regular";
-	xmlDoc *html = scrape(url.c_str());
-	parseStandings(html);
-	xmlFreeDoc(html);
+    std::string url = "https://fantasy.nfl.com/league/" + leagueId +
+                      "/history/" + std::to_string(year) +
+                      "/standings?historyStandingsType=regular";
+    xmlDoc *html = scrape(url.c_str());
+    parseStandings(html);
+    xmlFreeDoc(html);
 }
 
 MatchupConstraints Nfl::getMatchupConstraints() {
@@ -189,8 +203,10 @@ MatchupConstraints Nfl::getMatchupConstraints() {
                     entity = constraintsLine;
                     constraints[entity] = {};
                 } else {
-                    std::string opponent = constraintsLine.substr(0, delimiterIndex);
-                    int numMatchups = stoi(constraintsLine.substr(delimiterIndex + 1));
+                    std::string opponent =
+                        constraintsLine.substr(0, delimiterIndex);
+                    int numMatchups =
+                        stoi(constraintsLine.substr(delimiterIndex + 1));
 
                     if (constraints.find(entity) != constraints.end()) {
                         constraints[entity][opponent] = numMatchups;
@@ -217,14 +233,15 @@ ScheduleConstraints Nfl::getScheduleConstraints(int weeks) {
             if (delimiterIndex < 0) {
                 week = stoi(line);
                 if (week <= weeks) {
-                  constraints[week] = {};
+                    constraints[week] = {};
                 } else {
-                  throw std::invalid_argument(
-                    std::string("Error reading schedule constraints file: ") + 
-                    "a constraint was provided for week " + line +
-                    "but the season begins on week 1 and is " +
-                    std::to_string(weeks) + " long."
-                  );
+                    throw std::invalid_argument(
+                        std::string("Error reading schedule constraints file: "
+                        ) +
+                        "a constraint was provided for week " + line +
+                        "but the season begins on week 1 and is " +
+                        std::to_string(weeks) + " long."
+                    );
                 }
             } else {
                 std::string entity = line.substr(0, delimiterIndex);
